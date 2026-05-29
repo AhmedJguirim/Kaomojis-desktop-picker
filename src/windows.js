@@ -1,5 +1,5 @@
 // Creates and manages the app's two windows: the picker and the settings panel.
-const { BrowserWindow, screen } = require('electron')
+const { app, BrowserWindow, screen } = require('electron')
 const path = require('path')
 
 const ICON = path.join(__dirname, 'assets', 'icon.png')
@@ -9,6 +9,7 @@ const PICKER_H = 420
 
 let picker = null
 let settings = null
+let manager = null
 
 function createPicker() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize
@@ -33,6 +34,15 @@ function createPicker() {
 
   picker.loadFile(path.join(__dirname, 'picker', 'index.html'))
   picker.on('blur', () => picker.hide())
+  // Closing the picker (Alt+F4, etc.) just hides it to the tray instead of
+  // destroying it — so the shortcut keeps working. It's only truly destroyed
+  // when the user quits from the tray.
+  picker.on('close', (e) => {
+    if (!app.isQuitting) {
+      e.preventDefault()
+      picker.hide()
+    }
+  })
   return picker
 }
 
@@ -84,4 +94,27 @@ function openSettings() {
   settings.on('closed', () => { settings = null })
 }
 
-module.exports = { createPicker, getPicker, showPicker, togglePicker, openSettings }
+function openManager() {
+  if (manager && !manager.isDestroyed()) {
+    manager.show()
+    manager.focus()
+    return
+  }
+  manager = new BrowserWindow({
+    width: 640,
+    height: 560,
+    minWidth: 480,
+    minHeight: 400,
+    title: 'emojis — Manage kaomoji',
+    icon: ICON,
+    autoHideMenuBar: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    }
+  })
+  manager.loadFile(path.join(__dirname, 'manager', 'manager.html'))
+  manager.on('closed', () => { manager = null })
+}
+
+module.exports = { createPicker, getPicker, showPicker, togglePicker, openSettings, openManager }

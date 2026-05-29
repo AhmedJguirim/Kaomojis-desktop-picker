@@ -3,6 +3,7 @@ const config = require('./config')
 const shortcuts = require('./shortcuts')
 const windows = require('./windows')
 const tray = require('./tray')
+const kaomojiStore = require('./kaomoji-store')
 
 // Process / Task Manager name. (When packaged, the .exe is also named "emojis"
 // via build.productName; running unpackaged it still shows as "Electron".)
@@ -18,11 +19,13 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', () => windows.showPicker())
 
   app.whenReady().then(() => {
+    kaomojiStore.load() // seed <userData>/kaomoji.json on first run
     windows.createPicker()
 
     trayCtl = tray.create({
       onShow: () => windows.showPicker(),
       onSettings: () => windows.openSettings(),
+      onManage: () => windows.openManager(),
       getShortcut: () => settings.shortcut
     })
 
@@ -52,6 +55,23 @@ ipcMain.on('close-window', () => {
 
 // Settings window asks for the current config.
 ipcMain.handle('get-config', () => settings)
+
+// ---- kaomoji list (picker reads it; manager reads + writes it) ----
+ipcMain.handle('get-kaomoji', () => kaomojiStore.load())
+
+ipcMain.handle('save-kaomoji', (_e, list) => {
+  const ok = kaomojiStore.save(list)
+  if (ok) {
+    // Tell an open picker to refresh so edits show up immediately.
+    const picker = windows.getPicker()
+    if (picker && !picker.isDestroyed()) picker.webContents.send('kaomoji-updated')
+    return { ok: true, count: kaomojiStore.load().length }
+  }
+  return { ok: false, error: 'Could not save your kaomoji file.' }
+})
+
+// Where the file lives, for display in the manager.
+ipcMain.handle('get-kaomoji-path', () => kaomojiStore.filePath())
 
 // Settings window proposes a new shortcut. Returns { ok, shortcut, error }.
 ipcMain.handle('set-shortcut', (_e, accelerator) => {

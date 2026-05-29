@@ -4,13 +4,14 @@ const path = require('path')
 
 let tray = null
 
-function create({ onShow, onSettings, getShortcut }) {
+function create({ onShow, onSettings, onManage, getShortcut }) {
   tray = new Tray(path.join(__dirname, 'assets', 'tray.png'))
   tray.setToolTip('emojis — kaomoji picker')
 
   const rebuildMenu = () => {
     const menu = Menu.buildFromTemplate([
       { label: `Picker (${getShortcut()})`, click: onShow },
+      { label: 'Manage kaomoji…', click: onManage },
       { label: 'Settings…', click: onSettings },
       { type: 'separator' },
       { label: 'Quit emojis', click: () => { app.isQuitting = true; app.quit() } }

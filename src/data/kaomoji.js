@@ -1,5 +1,7 @@
+// Default kaomoji set. Used to seed <userData>/kaomoji.json on first run.
+// After that, the user's JSON file is the source of truth (editable in-app).
 // Each entry: { text: the kaomoji, keywords: searchable terms }
-const KAOMOJI = [
+module.exports = [
   { text: '¯\\_(ツ)_/¯', keywords: 'shrug whatever dunno idk meh indifferent' },
   { text: '(╯°□°)╯︵ ┻━┻', keywords: 'flip table angry rage mad tableflip' },
   { text: '┬─┬ ノ( ゜-゜ノ)', keywords: 'put table back calm unflip fix' },

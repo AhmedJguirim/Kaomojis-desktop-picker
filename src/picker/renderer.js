@@ -4,8 +4,21 @@ const searchEl = document.getElementById('search')
 const resultsEl = document.getElementById('results')
 const copiedEl = document.getElementById('copied')
 
+let KAOMOJI = []
 let filtered = []
 let activeIndex = 0
+
+async function loadData() {
+  try {
+    KAOMOJI = await ipcRenderer.invoke('get-kaomoji')
+  } catch {
+    KAOMOJI = []
+  }
+  render()
+}
+
+// Refresh the list when the manager saves changes.
+ipcRenderer.on('kaomoji-updated', loadData)
 
 function score(item, query) {
   const q = query.toLowerCase().trim()
@@ -96,13 +109,13 @@ document.addEventListener('keydown', (e) => {
   }
 })
 
-// When the window is shown, clear and refocus
+// When the window is shown, reload the list, clear and refocus
 ipcRenderer.on('focus-search', () => {
   searchEl.value = ''
   copiedEl.classList.remove('show')
-  render()
+  loadData()
   searchEl.focus()
 })
 
-render()
+loadData()
 searchEl.focus()

@@ -31,21 +31,25 @@ press the shortcut.
 
 ## Customizing
 
+Right-click the **tray icon** (near the clock) for the menu: open the picker,
+**Manage kaomoji…**, **Settings…**, or **Quit**.
+
 ### Change the shortcut
-Open `main.js` and edit this line:
-```js
-const shortcut = 'Alt+Space'
-```
-Examples: `'Control+Shift+E'`, `'Super+E'` (Super = Windows key), `'Alt+K'`.
-See Electron's accelerator format for all options.
+Open **Settings…** from the tray menu, click the shortcut field, then press your
+combo (hold a modifier like Ctrl/Alt/Shift/Win, then a key). It's saved instantly
+to `%AppData%\emojis\config.json` and takes effect right away.
 
 ### Add or edit kaomoji
-Open `kaomoji.js`. Each entry has the kaomoji text and a list of search keywords:
-```js
-{ text: '¯\\_(ツ)_/¯', keywords: 'shrug whatever dunno idk meh' },
+Open **Manage kaomoji…** from the tray menu. Add, edit, filter, and delete
+entries, then click **Save changes** (or Ctrl+S). No code editing or backslash
+escaping needed.
+
+Your kaomoji live in a plain JSON file you can also edit by hand or back up:
 ```
-Add your own lines following the same pattern. Note that a backslash in the text
-must be written as `\\`.
+%AppData%\emojis\kaomoji.json
+```
+Each entry is `{ "text": "...", "keywords": "space separated terms" }`. The file
+is created from a default set the first time the app runs.
 
 ## Building a standalone .exe (optional)
 
