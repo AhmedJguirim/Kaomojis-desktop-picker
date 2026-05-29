@@ -10,8 +10,18 @@ let recording = false
 
 const MODIFIER_KEYS = new Set(['Control', 'Alt', 'Shift', 'Meta', 'OS', 'AltGraph', 'CapsLock'])
 
-// How an Electron accelerator token is displayed on a key cap.
-const DISPLAY = { Control: 'Ctrl', Alt: 'Alt', Shift: 'Shift', Super: 'Win', Return: 'Enter' }
+const IS_MAC = process.platform === 'darwin'
+
+// Human-readable list of modifiers for hints, per platform.
+const MOD_HINT = IS_MAC
+  ? 'Ctrl, Option, Shift or Cmd'
+  : (process.platform === 'linux' ? 'Ctrl, Alt, Shift or Super' : 'Ctrl, Alt, Shift or Win')
+
+// How an Electron accelerator token is displayed on a key cap, per platform.
+// (The saved accelerator string itself stays platform-neutral, e.g. "Super".)
+const DISPLAY = IS_MAC
+  ? { Control: '⌃ Ctrl', Alt: '⌥ Option', Shift: '⇧ Shift', Super: '⌘ Cmd', Return: 'Return' }
+  : { Control: 'Ctrl', Alt: 'Alt', Shift: 'Shift', Super: process.platform === 'linux' ? 'Super' : 'Win', Return: 'Enter' }
 
 const NAMED_KEYS = {
   ' ': 'Space', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right',
@@ -117,7 +127,7 @@ document.addEventListener('keydown', (e) => {
   if (mods.length === 0 && !isFunctionKey) {
     // A bare letter would hijack that key system-wide — require a modifier.
     renderCombo([token])
-    setStatus('Add a modifier (Ctrl, Alt, Shift or Win).', 'err')
+    setStatus(`Add a modifier (${MOD_HINT}).`, 'err')
     return
   }
 
@@ -144,6 +154,10 @@ async function commit(accelerator) {
     setStatus('Could not set that shortcut.', 'err')
   }
 }
+
+// Localize the hint text for the current platform.
+const modhintEl = document.getElementById('modhint')
+if (modhintEl) modhintEl.textContent = MOD_HINT
 
 // Load current config on open.
 ipcRenderer.invoke('get-config').then((cfg) => {

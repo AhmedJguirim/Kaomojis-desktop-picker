@@ -1,14 +1,14 @@
 # emojis — Kaomoji Picker
 
-> A tiny, keyboard-driven kaomoji picker for Windows. Hit a global shortcut, type a word like `shrug`, press Enter, and `¯\_(ツ)_/¯` is on your clipboard.
+> A tiny, keyboard-driven kaomoji picker for Windows, macOS, and Linux. Hit a global shortcut, type a word like `shrug`, press Enter, and `¯\_(ツ)_/¯` is on your clipboard.
 
 <p>
-  <img alt="Platform" src="https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white">
+  <img alt="Platforms" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-555">
   <img alt="Built with Electron" src="https://img.shields.io/badge/built%20with-Electron-47848F?logo=electron&logoColor=white">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green">
 </p>
 
-It lives quietly in your system tray and stays out of the way until you summon it.
+It lives quietly in your system tray — the menu bar on macOS — and stays out of the way until you summon it.
 
 <!--
   TIP: A screenshot or GIF sells this instantly. Drop one in `docs/` and embed it here, e.g.:
@@ -28,8 +28,16 @@ It lives quietly in your system tray and stays out of the way until you summon i
 
 ## Install
 
-### Option A — download the installer (recommended)
-Grab the latest `emojis Setup x.y.z.exe` from the [Releases](https://github.com/AhmedJguirim/Kaomojis-desktop-picker/releases) page and run it. The app installs, adds a tray icon, and is ready to use.
+### Option A — download a build (recommended)
+Grab the latest build for your OS from the [Releases](https://github.com/AhmedJguirim/Kaomojis-desktop-picker/releases) page:
+
+| OS | File |
+| --- | --- |
+| Windows | `emojis Setup x.y.z.exe` (installer) |
+| macOS | `emojis-x.y.z.dmg` (drag to Applications) |
+| Linux | `emojis-x.y.z.AppImage` (mark executable & run) or the `.deb` |
+
+The app starts in the tray / menu bar and is ready to use.
 
 ### Option B — run from source
 You'll need [Node.js](https://nodejs.org) 22.12+ (this project is developed on Node 24).
@@ -56,50 +64,59 @@ The app starts in the background — nothing appears until you press the shortcu
 
 ## Configuration
 
-Right-click the **tray icon** (near the clock) for the menu: **Picker**, **Manage kaomoji…**, **Settings…**, **Quit**.
+Right-click the **tray icon** (the menu-bar icon on macOS) for the menu: **Picker**, **Manage kaomoji…**, **Settings…**, **Quit**.
 
 ### Change the shortcut
-Open **Settings…**, click the shortcut field, then press your combo — hold a modifier (<kbd>Ctrl</kbd>/<kbd>Alt</kbd>/<kbd>Shift</kbd>/<kbd>Win</kbd>) and add a key. It's validated against the OS and saved immediately.
+Open **Settings…**, click the shortcut field, then press your combo — hold a modifier (<kbd>Ctrl</kbd>/<kbd>Alt</kbd>/<kbd>Shift</kbd>/<kbd>Win</kbd>, or <kbd>⌘</kbd>/<kbd>⌥</kbd> on macOS) and add a key. The recorder shows the right labels for your OS, and the combo is validated and saved immediately.
 
 ### Add / edit kaomoji
 Open **Manage kaomoji…** to add, edit, filter, and delete entries, then **Save changes** (or <kbd>Ctrl</kbd> + <kbd>S</kbd>).
 
-Your data lives in a plain JSON file you can also edit by hand or back up:
+Your data lives in a plain JSON file you can also edit by hand or back up. The
+location follows each OS's conventions:
 
-```
-%AppData%\emojis\kaomoji.json
-```
+| OS | Folder |
+| --- | --- |
+| Windows | `%AppData%\emojis\` |
+| macOS | `~/Library/Application Support/emojis/` |
+| Linux | `~/.config/emojis/` |
 
-Each entry looks like:
+That folder holds `kaomoji.json` (your collection) and `config.json` (your settings).
+Each kaomoji entry looks like:
 
 ```json
 { "text": "¯\\_(ツ)_/¯", "keywords": "shrug whatever dunno idk meh" }
 ```
 
-It's seeded from a default set on first run. Settings live alongside it in `%AppData%\emojis\config.json`.
+`kaomoji.json` is seeded from a default set the first time the app runs.
 
-## Build a standalone installer
+## Build from source
 
-The project uses [electron-builder](https://www.electron.build/) to produce an NSIS installer.
+The project uses [electron-builder](https://www.electron.build/) for packaging.
 
 ```bash
 npm run icons   # generate app/tray icons into build/ and src/assets/
-npm run dist    # build the installer into dist/
+npm run dist    # build for the current OS into dist/
 ```
 
-Windows users can also just run the helper script, which installs deps and builds in one step:
+`npm run dist` produces the artifact for whatever OS you run it on:
 
-```powershell
-.\build-installer.ps1
-```
+- **Windows** → NSIS installer (`emojis Setup x.y.z.exe`). You can also run the
+  one-step helper `./build-installer.ps1` (installs deps + builds).
+- **macOS** → `.dmg` and `.zip`. (Building a Mac app requires running on macOS.)
+- **Linux** → `.AppImage` and `.deb`.
 
-The finished installer lands in `dist/` as `emojis Setup x.y.z.exe`.
+electron-builder generally targets the OS it runs on, so build each platform on
+that platform (or via CI) for best results.
 
-> Note: `build/` is git-ignored, so the icons are generated locally via `npm run icons` before packaging.
+> Note: `build/` is git-ignored, so run `npm run icons` once before `npm run dist`
+> to (re)generate the icons.
 
 ## Run on startup (optional)
 
-Press <kbd>Win</kbd> + <kbd>R</kbd>, type `shell:startup`, and drop a shortcut to the installed `emojis.exe` into that folder so the picker is ready every time you log in.
+- **Windows** — press <kbd>Win</kbd> + <kbd>R</kbd>, type `shell:startup`, and drop a shortcut to the installed app into that folder.
+- **macOS** — System Settings → General → Login Items → add **emojis**.
+- **Linux** — add a `.desktop` entry to `~/.config/autostart/`.
 
 ## Project structure
 
@@ -115,6 +132,7 @@ src/
   picker/            the search popup (index.html, renderer.js)
   settings/          shortcut recorder UI
   manager/           add/edit/delete UI
+  assets/            generated icons (colored + macOS template)
 generate-icons.js    procedurally generates the app + tray icons
 build-installer.ps1  one-step Windows build helper
 ```
@@ -134,7 +152,7 @@ Issues and pull requests are welcome! If you're adding a feature:
 3. Run `npm start` to verify the app behaves.
 4. Open a PR describing the change.
 
-Bug reports should include your Windows version and steps to reproduce.
+Bug reports should include your OS and version and steps to reproduce.
 
 ## License
 

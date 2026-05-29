@@ -19,6 +19,9 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', () => windows.showPicker())
 
   app.whenReady().then(() => {
+    // On macOS this is a menu-bar utility: no Dock icon, no app menu.
+    if (process.platform === 'darwin' && app.dock) app.dock.hide()
+
     kaomojiStore.load() // seed <userData>/kaomoji.json on first run
     windows.createPicker()
 

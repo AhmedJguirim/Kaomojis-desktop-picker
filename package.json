@@ -31,6 +31,25 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "emojis"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.png",
+      "LSUIElement": true
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility",
+      "icon": "build/icon.png",
+      "maintainer": "Ahmed Jguirim <jguirimahmed111@gmail.com>",
+      "synopsis": "Keyboard-triggered kaomoji picker"
     }
   }
 }

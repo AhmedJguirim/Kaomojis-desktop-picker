@@ -1,8 +1,12 @@
 // generate-icons.js
 // Generates the app/tray icons from scratch (no image libraries needed).
-// Produces: build/icon.ico + build/icon.png (installer & exe icon)
-//           src/assets/tray.png (system-tray icon, bundled at runtime)
-// Run with:  node generate-icons.js
+// Produces:
+//   build/icon.png            1024px master (electron-builder derives mac/linux/win icons)
+//   build/icon.ico            Windows .exe / installer icon
+//   src/assets/icon.png       window icon (256px)
+//   src/assets/tray.png       colored tray icon for Windows & Linux (32px)
+//   src/assets/trayTemplate.png  monochrome macOS menu-bar template (22px)
+// Run with:  node generate-icons.js   (or  npm run icons)
 const fs = require('fs')
 const path = require('path')
 const zlib = require('zlib')
@@ -37,7 +41,6 @@ function encodePNG(width, height, rgba) {
   ihdr.writeUInt32BE(height, 4)
   ihdr[8] = 8   // bit depth
   ihdr[9] = 6   // color type RGBA
-  // rows with filter byte 0
   const raw = Buffer.alloc((width * 4 + 1) * height)
   for (let y = 0; y < height; y++) {
     raw[y * (width * 4 + 1)] = 0
@@ -47,47 +50,71 @@ function encodePNG(width, height, rgba) {
   return Buffer.concat([sig, chunk('IHDR', ihdr), chunk('IDAT', idat), chunk('IEND', Buffer.alloc(0))])
 }
 
-// ---- draw a smiley face ----
-function draw(size) {
-  const buf = Buffer.alloc(size * size * 4) // transparent
-  const cx = size / 2, cy = size / 2
-  const r = size * 0.46
-  const face = [0xd4, 0xa0, 0x4f] // accent gold
-  const ink = [0x1c, 0x1c, 0x22]  // dark
-  const set = (x, y, rgb, a) => {
-    x = Math.round(x); y = Math.round(y)
-    if (x < 0 || y < 0 || x >= size || y >= size) return
-    const i = (y * size + x) * 4
-    const na = a, ia = 1 - a
-    buf[i]     = Math.round(rgb[0] * na + buf[i] * ia)
-    buf[i + 1] = Math.round(rgb[1] * na + buf[i + 1] * ia)
-    buf[i + 2] = Math.round(rgb[2] * na + buf[i + 2] * ia)
-    buf[i + 3] = Math.max(buf[i + 3], Math.round(255 * na))
-  }
-  const stamp = (x0, y0, rad, rgb) => {
-    for (let y = Math.floor(y0 - rad - 1); y <= y0 + rad + 1; y++)
-      for (let x = Math.floor(x0 - rad - 1); x <= x0 + rad + 1; x++) {
-        const d = Math.hypot(x + 0.5 - x0, y + 0.5 - y0)
-        const a = Math.max(0, Math.min(1, rad - d + 0.5))
-        if (a > 0) set(x, y, rgb, a)
-      }
-  }
-  // face disk (anti-aliased edge)
+const clamp01 = (v) => Math.max(0, Math.min(1, v))
+
+// ---- compute anti-aliased coverage maps for the smiley ----
+function coverage(size) {
+  const n = size * size
+  const face = new Float64Array(n) // face disk
+  const feat = new Float64Array(n) // eyes + mouth
+  const cx = size / 2, cy = size / 2, r = size * 0.46
+
   for (let y = 0; y < size; y++)
     for (let x = 0; x < size; x++) {
       const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy)
-      const a = Math.max(0, Math.min(1, r - d + 0.5))
-      if (a > 0) set(x, y, face, a)
+      face[y * size + x] = clamp01(r - d + 0.5)
     }
-  // eyes
-  stamp(cx - 0.22 * r, cy - 0.18 * r, r * 0.085, ink)
-  stamp(cx + 0.22 * r, cy - 0.18 * r, r * 0.085, ink)
-  // smile (parabola of stamped dots)
+
+  const stamp = (x0, y0, rad) => {
+    for (let y = Math.floor(y0 - rad - 1); y <= y0 + rad + 1; y++)
+      for (let x = Math.floor(x0 - rad - 1); x <= x0 + rad + 1; x++) {
+        if (x < 0 || y < 0 || x >= size || y >= size) continue
+        const d = Math.hypot(x + 0.5 - x0, y + 0.5 - y0)
+        const a = clamp01(rad - d + 0.5)
+        const i = y * size + x
+        if (a > feat[i]) feat[i] = a
+      }
+  }
+  stamp(cx - 0.22 * r, cy - 0.18 * r, r * 0.085)
+  stamp(cx + 0.22 * r, cy - 0.18 * r, r * 0.085)
   const mw = r * 0.42, baseY = cy + 0.34 * r, lift = 0.20 * r
   for (let t = -mw; t <= mw; t += r * 0.02) {
     const x = cx + t
     const y = baseY - lift * (t / mw) * (t / mw)
-    stamp(x, y, r * 0.055, ink)
+    stamp(x, y, r * 0.055)
+  }
+  return { face, feat, size }
+}
+
+// Colored icon: gold face, dark eyes/mouth.
+function colored(maps) {
+  const { face, feat, size } = maps
+  const gold = [0xd4, 0xa0, 0x4f], ink = [0x1c, 0x1c, 0x22]
+  const buf = Buffer.alloc(size * size * 4)
+  for (let i = 0; i < size * size; i++) {
+    const fa = face[i]
+    if (fa <= 0) continue
+    const fe = Math.min(feat[i], fa)
+    const o = i * 4
+    buf[o] = Math.round(gold[0] * (1 - fe) + ink[0] * fe)
+    buf[o + 1] = Math.round(gold[1] * (1 - fe) + ink[1] * fe)
+    buf[o + 2] = Math.round(gold[2] * (1 - fe) + ink[2] * fe)
+    buf[o + 3] = Math.round(255 * fa)
+  }
+  return encodePNG(size, size, buf)
+}
+
+// macOS template: solid black, eyes/mouth knocked out of the alpha channel.
+function template(maps) {
+  const { face, feat, size } = maps
+  const buf = Buffer.alloc(size * size * 4)
+  for (let i = 0; i < size * size; i++) {
+    const fa = face[i]
+    if (fa <= 0) continue
+    const fe = Math.min(feat[i], fa)
+    const o = i * 4
+    buf[o] = 0; buf[o + 1] = 0; buf[o + 2] = 0
+    buf[o + 3] = Math.round(255 * fa * (1 - fe))
   }
   return encodePNG(size, size, buf)
 }
@@ -95,18 +122,16 @@ function draw(size) {
 // ---- wrap a PNG into a single-image .ico ----
 function pngToIco(png, size) {
   const header = Buffer.alloc(6)
-  header.writeUInt16LE(0, 0)  // reserved
-  header.writeUInt16LE(1, 2)  // type = icon
-  header.writeUInt16LE(1, 4)  // count
+  header.writeUInt16LE(0, 0)
+  header.writeUInt16LE(1, 2)
+  header.writeUInt16LE(1, 4)
   const entry = Buffer.alloc(16)
-  entry[0] = size >= 256 ? 0 : size // width (0 => 256)
-  entry[1] = size >= 256 ? 0 : size // height
-  entry[2] = 0  // palette
-  entry[3] = 0  // reserved
-  entry.writeUInt16LE(1, 4)        // planes
-  entry.writeUInt16LE(32, 6)       // bpp
+  entry[0] = size >= 256 ? 0 : size
+  entry[1] = size >= 256 ? 0 : size
+  entry.writeUInt16LE(1, 4)
+  entry.writeUInt16LE(32, 6)
   entry.writeUInt32LE(png.length, 8)
-  entry.writeUInt32LE(6 + 16, 12)  // offset
+  entry.writeUInt32LE(6 + 16, 12)
   return Buffer.concat([header, entry, png])
 }
 
@@ -114,10 +139,11 @@ const root = __dirname
 fs.mkdirSync(path.join(root, 'build'), { recursive: true })
 fs.mkdirSync(path.join(root, 'src', 'assets'), { recursive: true })
 
-const png256 = draw(256)
-const png32 = draw(32)
-fs.writeFileSync(path.join(root, 'build', 'icon.png'), png256)
-fs.writeFileSync(path.join(root, 'build', 'icon.ico'), pngToIco(png256, 256))
-fs.writeFileSync(path.join(root, 'src', 'assets', 'tray.png'), png32)
-fs.writeFileSync(path.join(root, 'src', 'assets', 'icon.png'), png256)
-console.log('Icons generated: build/icon.ico, build/icon.png, src/assets/tray.png, src/assets/icon.png')
+fs.writeFileSync(path.join(root, 'build', 'icon.png'), colored(coverage(1024)))
+fs.writeFileSync(path.join(root, 'build', 'icon.ico'), pngToIco(colored(coverage(256)), 256))
+fs.writeFileSync(path.join(root, 'src', 'assets', 'icon.png'), colored(coverage(256)))
+fs.writeFileSync(path.join(root, 'src', 'assets', 'tray.png'), colored(coverage(32)))
+fs.writeFileSync(path.join(root, 'src', 'assets', 'trayTemplate.png'), template(coverage(22)))
+console.log('Icons generated:')
+console.log('  build/icon.png (1024), build/icon.ico (256)')
+console.log('  src/assets/icon.png (256), src/assets/tray.png (32), src/assets/trayTemplate.png (22)')
