@@ -39,7 +39,9 @@
       ],
       "category": "public.app-category.productivity",
       "icon": "build/icon.png",
-      "LSUIElement": true
+      "extendInfo": {
+        "LSUIElement": 1
+      }
     },
     "linux": {
       "target": [
