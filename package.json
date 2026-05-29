@@ -1,0 +1,36 @@
+{
+  "name": "kaomoji-picker",
+  "version": "1.0.0",
+  "description": "Keyboard-triggered kaomoji picker for Windows",
+  "author": "jguirimahmed111",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "icons": "node generate-icons.js",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^42.3.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.jguirimahmed111.kaomojipicker",
+    "productName": "emojis",
+    "executableName": "emojis",
+    "files": [
+      "src/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "emojis"
+    }
+  }
+}
